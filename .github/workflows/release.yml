@@ -1,7 +1,8 @@
 name: Release
 
-# Tag vX.Y.Z on main to build every desktop artifact and open a draft release.
-# The draft is checked by hand before it is published.
+# A tag vX.Y.Z builds every desktop artifact. Pushing the tag opens a draft
+# release to check by hand. Creating the release on GitHub first (which creates
+# the tag) gets the files attached to that release instead.
 #
 # Code signing is not configured yet: Windows builds are unsigned, so
 # SmartScreen will warn. See docs/RELEASE_CHECKLIST.md for what to add.
@@ -86,10 +87,16 @@ jobs:
       - name: Checksums
         working-directory: out
         run: sha256sum * > SHA256SUMS.txt
-      - name: Create the draft release
+      # If the release was already created by hand on GitHub (which is also
+      # what creates the tag), attach the files to it. Otherwise open a draft.
+      - name: Attach the files to the release, or create a draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/* --draft --verify-tag \
-            --title "Normandin Tunnel ${GITHUB_REF_NAME#v}" \
-            --notes "Unsigned preview build. Check SHA256SUMS.txt after downloading."
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" out/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" out/* --draft --verify-tag \
+              --title "Normandin Tunnel ${GITHUB_REF_NAME#v}" \
+              --notes "Unsigned preview build. Check SHA256SUMS.txt after downloading."
+          fi

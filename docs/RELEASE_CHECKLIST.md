@@ -44,6 +44,13 @@ background, both languages, both themes, keyboard-only use.
 - Signing secrets belong in a protected GitHub environment that needs your
   approval, never in the repository.
 
+## Publishing
+
+Either push a tag `vX.Y.Z` and wait for the draft release to appear, or, on
+GitHub, choose Releases > Draft a new release, type the new tag `vX.Y.Z`,
+write the notes and publish. In the second case the installers are attached
+to the release by the build about an hour later.
+
 ## After the draft release is created
 
 - [ ] Download every file, check `SHA256SUMS.txt`.
