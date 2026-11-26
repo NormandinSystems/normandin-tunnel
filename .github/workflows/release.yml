@@ -66,6 +66,12 @@ jobs:
             cp target/release/tunnel "out/tunnel-cli-${tag}-linux-${arch}"
             cp target/release/tunnel-rendezvous "out/tunnel-rendezvous-${tag}-linux-${arch}"
           fi
+          # GitHub replaces spaces in the names of release files with dots. Do
+          # it here, so that SHA256SUMS.txt lists the names people download.
+          for file in out/*; do
+            renamed="${file// /.}"
+            if [ "$file" != "$renamed" ]; then mv "$file" "$renamed"; fi
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ runner.os }}
