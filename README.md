@@ -133,6 +133,12 @@ Bug reports, questions and pull requests are welcome. Start with
 [CONTRIBUTING.md](CONTRIBUTING.md). For anything security-related, use the
 [security policy](SECURITY.md) instead of a public issue.
 
+## Support the project
+
+Normandin Tunnel is free and will stay free. If it is useful to you and you
+would like to support its development with a donation, write to
+[michael@normandinsystems.com](mailto:michael@normandinsystems.com).
+
 ## Credits
 
 * Connections: [iroh](https://iroh.computer).
