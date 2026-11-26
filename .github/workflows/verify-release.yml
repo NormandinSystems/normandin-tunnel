@@ -1,0 +1,254 @@
+name: Verify release
+
+# Takes the files of a published release, exactly as people download them,
+# onto clean machines and checks that:
+#   * every file matches SHA256SUMS.txt,
+#   * each installer installs, the installed app starts and loads its
+#     interface, and it can be removed again,
+#   * the command-line program sends a folder to another copy of itself
+#     through the public relays and the result is identical.
+#
+# It runs by itself after a release build, and can be run from the Actions tab.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to check (empty means the latest release)
+        default: ""
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-release.yml
+      - .github/scripts/**
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  INPUT_TAG: ${{ inputs.tag }}
+  RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+
+jobs:
+  files:
+    name: Files and checksums
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Which release
+        id: tag
+        run: |
+          tag="${INPUT_TAG:-}"
+          if [ -z "$tag" ] && [ "${RUN_TAG#v}" != "${RUN_TAG:-}" ]; then
+            tag="$RUN_TAG"
+          fi
+          if [ -z "$tag" ]; then
+            tag=$(gh release view -R "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Checking release $tag"
+      - name: Download everything
+        run: gh release download "${{ steps.tag.outputs.tag }}" -R "$GITHUB_REPOSITORY" -D dl
+      - name: Every expected file is there
+        working-directory: dl
+        run: |
+          ls -la
+          missing=0
+          for pattern in "*-setup.exe" "*.msi" "*.deb" "*.rpm" "*.AppImage" \
+              "tunnel-cli-*-windows-x64.exe" "tunnel-cli-*-linux-x64" \
+              "tunnel-rendezvous-*-windows-x64.exe" "tunnel-rendezvous-*-linux-x64" "SHA256SUMS.txt"; do
+            if ! ls $pattern >/dev/null 2>&1; then echo "MISSING: $pattern"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ]
+      - name: Checksums match
+        working-directory: dl
+        run: sha256sum --check SHA256SUMS.txt
+
+  windows-installers:
+    name: Windows ${{ matrix.kind }} installer
+    needs: files
+    runs-on: windows-2025
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [setup, msi]
+    env:
+      TAG: ${{ needs.files.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download the installer
+        shell: pwsh
+        run: |
+          $pattern = if ("${{ matrix.kind }}" -eq "setup") { "*-setup.exe" } else { "*.msi" }
+          gh release download $env:TAG -R $env:GITHUB_REPOSITORY -p $pattern -D dl
+          Get-ChildItem dl | Format-Table Name, Length
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $file = (Get-ChildItem dl | Select-Object -First 1).FullName
+          if ("${{ matrix.kind }}" -eq "setup") {
+            $p = Start-Process -FilePath $file -ArgumentList "/S" -Wait -PassThru
+          } else {
+            $p = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i", "`"$file`"", "/qn", "/norestart" -Wait -PassThru
+          }
+          if ($p.ExitCode -ne 0) { Write-Error "The installer ended with code $($p.ExitCode)"; exit 1 }
+          $roots = @(
+            (Join-Path $env:LOCALAPPDATA "Normandin Tunnel"),
+            (Join-Path $env:LOCALAPPDATA "Programs\Normandin Tunnel"),
+            (Join-Path $env:ProgramFiles "Normandin Tunnel")
+          )
+          $exe = $roots | Where-Object { Test-Path $_ } |
+            ForEach-Object { Get-ChildItem $_ -Filter *.exe } |
+            Where-Object { $_.Name -notmatch "uninstall" } | Select-Object -First 1
+          if (-not $exe) { Write-Error "The installed program was not found"; exit 1 }
+          Write-Host "Installed at $($exe.FullName)"
+          "APP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: The installed app starts
+        shell: pwsh
+        run: .github/scripts/start-check.ps1 -Exe $env:APP_EXE -Name "windows-${{ matrix.kind }}"
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          $dir = Split-Path $env:APP_EXE
+          if ("${{ matrix.kind }}" -eq "setup") {
+            $un = Get-ChildItem $dir -Filter "uninstall*.exe" | Select-Object -First 1
+            if (-not $un) { Write-Error "No uninstaller was installed"; exit 1 }
+            Start-Process -FilePath $un.FullName -ArgumentList "/S" -Wait
+          } else {
+            $file = (Get-ChildItem dl | Select-Object -First 1).FullName
+            $p = Start-Process -FilePath "msiexec.exe" -ArgumentList "/x", "`"$file`"", "/qn", "/norestart" -Wait -PassThru
+            if ($p.ExitCode -ne 0) { Write-Error "Removing it ended with code $($p.ExitCode)"; exit 1 }
+          }
+          $deadline = (Get-Date).AddSeconds(60)
+          while ((Get-Date) -lt $deadline -and (Test-Path $env:APP_EXE)) { Start-Sleep -Seconds 2 }
+          if (Test-Path $env:APP_EXE) { Write-Error "The program is still there after uninstalling"; exit 1 }
+          Write-Host "Removed."
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: verify-windows-${{ matrix.kind }}
+          if-no-files-found: ignore
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/screen-*.png
+            ${{ runner.temp }}/start-*.txt
+
+  linux-deb:
+    name: Linux .deb package
+    needs: files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TAG: ${{ needs.files.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download and install
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "*.deb" -D dl
+          sudo apt-get update
+          sudo apt-get install -y ./dl/*.deb
+          sudo apt-get install -y --no-install-recommends xvfb imagemagick
+          dpkg -s normandin-tunnel | sed -n 1,12p
+      - name: The installed app starts
+        run: .github/scripts/start-check.sh "$(command -v normandin-tunnel)" linux-deb
+      - name: Remove
+        run: |
+          sudo apt-get remove -y normandin-tunnel
+          if command -v normandin-tunnel; then echo "Still installed"; exit 1; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: verify-linux-deb
+          if-no-files-found: ignore
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/screen-*.png
+            ${{ runner.temp }}/start-*.txt
+
+  linux-appimage:
+    name: Linux AppImage
+    needs: files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TAG: ${{ needs.files.outputs.tag }}
+      # The runner has no FUSE; this is the AppImage's own way of running without it.
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "*.AppImage" -D dl
+          chmod +x dl/*.AppImage
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb imagemagick
+      - name: The AppImage starts
+        run: .github/scripts/start-check.sh "$(ls "$PWD"/dl/*.AppImage)" linux-appimage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: verify-linux-appimage
+          if-no-files-found: ignore
+          retention-days: 30
+          path: |
+            ${{ runner.temp }}/screen-*.png
+            ${{ runner.temp }}/start-*.txt
+
+  linux-rpm:
+    name: Linux .rpm package (Fedora)
+    needs: files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TAG: ${{ needs.files.outputs.tag }}
+    steps:
+      - name: Download
+        run: gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "*.rpm" -D dl
+      # Installs on current Fedora with every dependency resolved, and checks
+      # that no library the program needs is missing. The app is not started
+      # here: a container has no display and no sandbox support for the web view.
+      - name: Installs on Fedora with nothing missing
+        run: |
+          docker run --rm -v "$PWD/dl:/dl:ro" fedora:latest bash -ec '
+            dnf install -y /dl/*.rpm >/tmp/dnf.log 2>&1 || { tail -40 /tmp/dnf.log; exit 1; }
+            rpm -q normandin-tunnel
+            bin=$(command -v normandin-tunnel)
+            echo "Installed at $bin"
+            if ldd "$bin" | grep -i "not found"; then echo "A library is missing"; exit 1; fi
+            echo "Every library it needs is present."
+          '
+
+  command-line:
+    name: Command line on ${{ matrix.os }}
+    needs: files
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    env:
+      TAG: ${{ needs.files.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then pattern="tunnel-cli-*-windows-x64.exe"; else pattern="tunnel-cli-*-linux-x64"; fi
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "$pattern" -D dl
+          chmod +x dl/*
+          ls -la dl
+      - name: It runs
+        shell: bash
+        run: dl/tunnel-cli-* --version
+      - name: A folder sent through the public relays arrives identical
+        shell: bash
+        run: .github/scripts/cli-transfer.sh "$(ls "$PWD"/dl/tunnel-cli-*)"

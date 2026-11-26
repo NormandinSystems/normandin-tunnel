@@ -51,8 +51,14 @@ GitHub, choose Releases > Draft a new release, type the new tag `vX.Y.Z`,
 write the notes and publish. In the second case the installers are attached
 to the release by the build about an hour later.
 
-## After the draft release is created
+## After the files are attached
 
-- [ ] Download every file, check `SHA256SUMS.txt`.
-- [ ] Install on a clean Windows machine and a clean Linux machine.
-- [ ] Publish the draft.
+The "Verify release" workflow runs by itself once the build has finished. On
+clean Windows and Linux machines it checks every file against
+`SHA256SUMS.txt`, installs each installer, starts the installed app, removes
+it again, and sends a folder with the command-line program through the public
+relays. Screenshots of the installed app are kept with the run.
+
+- [ ] "Verify release" is green.
+- [ ] Install by hand on one real Windows machine and one real Linux machine.
+- [ ] If the release was a draft, publish it.
