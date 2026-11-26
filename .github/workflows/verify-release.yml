@@ -200,7 +200,20 @@ jobs:
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "*.AppImage" -D dl
           chmod +x dl/*.AppImage
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends xvfb imagemagick
+          # This machine is a server image with no graphics libraries at all.
+          # An AppImage leaves those to the system, because every desktop has
+          # them, so they are installed here to stand in for a desktop.
+          sudo apt-get install -y --no-install-recommends xvfb imagemagick \
+            libegl1 libgl1 libgles2 libgbm1
+      - name: Nothing else the AppImage needs is missing
+        working-directory: dl
+        run: |
+          ./*.AppImage --appimage-extract >/dev/null
+          bin=$(find squashfs-root -type f -name normandin-tunnel | head -1)
+          echo "Program inside the AppImage: $bin"
+          export LD_LIBRARY_PATH="$PWD/squashfs-root/usr/lib:$PWD/squashfs-root/usr/lib/x86_64-linux-gnu"
+          if ldd "$bin" | grep "not found"; then echo "Libraries are missing"; exit 1; fi
+          echo "Every library it needs is present."
       - name: The AppImage starts
         run: .github/scripts/start-check.sh "$(ls "$PWD"/dl/*.AppImage)" linux-appimage
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
