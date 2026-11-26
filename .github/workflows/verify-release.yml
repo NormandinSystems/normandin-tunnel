@@ -35,7 +35,7 @@ env:
 
 jobs:
   files:
-    name: Files and checksums
+    name: Files
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -67,9 +67,20 @@ jobs:
             if ! ls $pattern >/dev/null 2>&1; then echo "MISSING: $pattern"; missing=1; fi
           done
           [ "$missing" -eq 0 ]
-      - name: Checksums match
+
+  checksums:
+    name: Checksums
+    needs: files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download everything
+        run: gh release download "${{ needs.files.outputs.tag }}" -R "$GITHUB_REPOSITORY" -D dl
+      - name: Every file matches SHA256SUMS.txt
         working-directory: dl
-        run: sha256sum --check SHA256SUMS.txt
+        run: |
+          cat SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
 
   windows-installers:
     name: Windows ${{ matrix.kind }} installer
