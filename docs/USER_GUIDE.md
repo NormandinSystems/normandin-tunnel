@@ -42,7 +42,8 @@ software with management tools.
 | Anything else | the `.AppImage` file | `chmod +x the-file.AppImage`, then run it |
 
 If the AppImage does not start, your system may be missing FUSE (the package
-is usually called `libfuse2`).
+is usually called `libfuse2`). The AppImage also uses your system's graphics
+libraries, which every desktop Linux already has.
 
 ### Check your download (optional)
 

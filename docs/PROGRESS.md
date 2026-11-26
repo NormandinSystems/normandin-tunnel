@@ -62,6 +62,20 @@ Every push runs `.github/workflows/ci.yml` on `ubuntu-24.04` and
   (`docs/screenshots/windows.png` is one of them).
 * Licences, advisories and sources (cargo-deny), and a scan for secrets.
 
+Every published release is then checked by `verify-release.yml`, using the
+files exactly as people download them, on clean Windows and Linux machines:
+
+* Every file matches `SHA256SUMS.txt`.
+* The Windows `-setup.exe` and `.msi` each install, the installed app starts
+  and loads its interface, and each uninstalls cleanly.
+* The `.deb` installs on Ubuntu, starts, and is removed. The AppImage starts
+  on Ubuntu. The `.rpm` installs on current Fedora with every dependency
+  found (it is not started there).
+* The command-line program sends a folder to another copy of itself through
+  the public relays, on Windows and on Linux, and the result is identical.
+
+Version 0.1.0 passed all of these on 26 November 2026.
+
 By hand:
 
 * On one Linux machine, the real app paired with the command-line app, both
