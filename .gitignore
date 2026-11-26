@@ -1,0 +1,15 @@
+/target
+/fuzz/target
+/fuzz/artifacts
+node_modules
+/app/dist
+/app/src-tauri/gen/schemas
+/app/src-tauri/target
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+*.pem
+*.key

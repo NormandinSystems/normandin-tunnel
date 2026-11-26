@@ -1,0 +1,52 @@
+# Normandin Tunnel servers on one Linux host.
+#
+#   1. Point rendezvous.<your-domain> and relay.<your-domain> at this server.
+#   2. Copy .env.example to .env and set DOMAIN.
+#   3. docker compose up -d --build
+#
+# Caddy gets the certificates and is the only service exposed to the internet.
+# Neither service writes anything to disk, and neither ever sees codes, keys
+# or file contents.
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [rendezvous, relay]
+
+  rendezvous:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.rendezvous
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    expose: ["8080"]
+
+  # Keep this on the same iroh version as the app (Cargo.toml pins iroh).
+  relay:
+    image: n0computer/iroh-relay:v1.5.0
+    restart: unless-stopped
+    command: ["--config-path", "/etc/iroh-relay.toml"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./iroh-relay.toml:/etc/iroh-relay.toml:ro
+    expose: ["3340"]
+
+volumes:
+  caddy-data:
+  caddy-config:

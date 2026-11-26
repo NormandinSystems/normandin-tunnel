@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/NormandinSystems/normandin-tunnel/security
+    about: Please do not open a public issue for a vulnerability.
+  - name: How do I use it?
+    url: https://github.com/NormandinSystems/normandin-tunnel/blob/main/docs/USER_GUIDE.md
+    about: The user guide covers installing, connecting and fixing common problems.

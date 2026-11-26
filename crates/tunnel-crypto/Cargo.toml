@@ -1,0 +1,26 @@
+[package]
+name = "tunnel-crypto"
+description = "Normandin Tunnel codes and cryptography: connection codes, SPAKE2 pairing, key schedule, safety code."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+spake2.workspace = true
+hkdf.workspace = true
+hmac.workspace = true
+sha2.workspace = true
+chacha20poly1305.workspace = true
+zeroize.workspace = true
+subtle.workspace = true
+getrandom.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+hex.workspace = true

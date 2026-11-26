@@ -1,0 +1,114 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/tunnel-proto",
+    "crates/tunnel-crypto",
+    "crates/tunnel-core",
+    "crates/tunnel-cli",
+    "crates/tunnel-rendezvous",
+    "app/src-tauri",
+    "tests",
+]
+default-members = [
+    "crates/tunnel-proto",
+    "crates/tunnel-crypto",
+    "crates/tunnel-core",
+    "crates/tunnel-cli",
+    "crates/tunnel-rendezvous",
+    "tests",
+]
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+authors = ["Normandin Systems"]
+publish = false
+repository = "https://github.com/NormandinSystems/normandin-tunnel"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+
+[workspace.dependencies]
+tunnel-proto = { path = "crates/tunnel-proto" }
+tunnel-crypto = { path = "crates/tunnel-crypto" }
+tunnel-core = { path = "crates/tunnel-core" }
+tunnel-rendezvous = { path = "crates/tunnel-rendezvous" }
+
+# Networking. The exact iroh version is pinned on purpose (see docs/DECISIONS.md).
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring", "portmapper", "fast-apple-datapath"] }
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "net", "signal"] }
+tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect", "handshake", "rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+webpki-roots = "1"
+bytes = "1"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+axum = { version = "0.8", default-features = false, features = ["ws", "http1", "tokio", "json"] }
+
+# Cryptography (suite fixed per protocol version).
+spake2 = "0.4"
+hkdf = "0.12"
+hmac = "0.12"
+sha2 = "0.10"
+chacha20poly1305 = "0.10"
+blake3 = "1.8"
+zeroize = { version = "1.8", features = ["derive"] }
+subtle = "2.6"
+getrandom = "0.3"
+
+# Encoding and storage.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
+base64 = "0.22"
+hex = "0.4"
+rusqlite = { version = "0.43", features = ["bundled"] }
+unicode-normalization = "0.1"
+
+# Platform helpers.
+dirs = "6"
+gethostname = "1"
+fs4 = "1.1"
+
+# Apps.
+clap = { version = "4.5", features = ["derive"] }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
+
+# Tests.
+proptest = "1.6"
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = "symbols"
+panic = "abort"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
+# Hashing and ciphers are unusably slow without optimisation, even in tests.
+[profile.dev.package.blake3]
+opt-level = 3
+[profile.dev.package.sha2]
+opt-level = 3
+[profile.dev.package.chacha20]
+opt-level = 3
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+[profile.dev.package.ring]
+opt-level = 3

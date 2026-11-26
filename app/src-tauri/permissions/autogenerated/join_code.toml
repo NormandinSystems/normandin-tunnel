@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-join-code"
+description = "Enables the join_code command without any pre-configured scope."
+commands.allow = ["join_code"]
+
+[[permission]]
+identifier = "deny-join-code"
+description = "Denies the join_code command without any pre-configured scope."
+commands.deny = ["join_code"]

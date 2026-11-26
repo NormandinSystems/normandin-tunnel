@@ -1,0 +1,45 @@
+# Licence and advisory policy, enforced in CI by cargo-deny.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+# Permissive licences only. GPL and AGPL are not allowed.
+allow = [
+    "MIT",
+    "MIT-0",
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "BSL-1.0",
+    "Unlicense",
+    "CC0-1.0",
+    "Unicode-3.0",
+    # Certificate data (webpki-roots).
+    "CDLA-Permissive-2.0",
+    # File-level copyleft, used unmodified by parts of the Tauri web-view stack.
+    "MPL-2.0",
+]
+
+[licenses.private]
+# Our own crates are unpublished and carry no licence field yet.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

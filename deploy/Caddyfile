@@ -1,0 +1,11 @@
+# Automatic HTTPS for both names. Access logs are off: the servers are meant to
+# remember nothing about who paired with whom.
+
+rendezvous.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy rendezvous:8080
+}
+
+relay.{$DOMAIN} {
+	reverse_proxy relay:3340
+}

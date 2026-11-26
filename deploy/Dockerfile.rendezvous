@@ -1,0 +1,20 @@
+# Builds the rendezvous server into a small image.
+#   docker build -f deploy/Dockerfile.rendezvous -t tunnel-rendezvous .
+FROM rust:1.97-bookworm AS build
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY crates ./crates
+COPY tests ./tests
+COPY app/src-tauri/Cargo.toml ./app/src-tauri/Cargo.toml
+# The desktop app is not needed for the server; give Cargo an empty stand-in.
+RUN mkdir -p app/src-tauri/src && echo "pub fn run() {}" > app/src-tauri/src/lib.rs \
+    && echo "fn main() {}" > app/src-tauri/src/main.rs \
+    && cargo build --release --locked -p tunnel-rendezvous
+
+FROM debian:bookworm-slim
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin tunnel
+COPY --from=build /src/target/release/tunnel-rendezvous /usr/local/bin/tunnel-rendezvous
+USER tunnel
+EXPOSE 8080
+ENV TUNNEL_LISTEN=0.0.0.0:8080 TUNNEL_TRUST_FORWARDED_FOR=true
+ENTRYPOINT ["/usr/local/bin/tunnel-rendezvous"]

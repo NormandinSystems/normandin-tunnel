@@ -1,0 +1,58 @@
+[package]
+name = "tunnel-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tunnel-proto = { path = "../crates/tunnel-proto" }
+tunnel-crypto = { path = "../crates/tunnel-crypto" }
+tunnel-core = { path = "../crates/tunnel-core" }
+
+[[bin]]
+name = "control_frame"
+path = "fuzz_targets/control_frame.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "data_frames"
+path = "fuzz_targets/data_frames.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "hello"
+path = "fuzz_targets/hello.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rendezvous_client"
+path = "fuzz_targets/rendezvous_client.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "code_parser"
+path = "fuzz_targets/code_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "path_sanitizer"
+path = "fuzz_targets/path_sanitizer.rs"
+test = false
+doc = false
+bench = false

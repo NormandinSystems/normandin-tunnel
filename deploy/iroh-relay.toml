@@ -1,0 +1,11 @@
+# iroh-relay behind Caddy: plain HTTP inside the Docker network, TLS at Caddy.
+# Relayed traffic is already end-to-end encrypted between the two devices.
+#
+# QUIC address discovery needs the relay to hold its own certificate, so it is
+# off in this simple setup. To turn it on, give the relay its own IP or port
+# and a [tls] section; see the iroh-relay documentation for this version.
+
+enable_relay = true
+http_bind_addr = "[::]:3340"
+enable_quic_addr_discovery = false
+enable_metrics = false
