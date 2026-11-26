@@ -62,14 +62,19 @@ Every push runs `.github/workflows/ci.yml` on `ubuntu-24.04` and
   (`docs/screenshots/windows.png` is one of them).
 * Licences, advisories and sources (cargo-deny), and a scan for secrets.
 
-By hand, on Linux only: the real app paired with the command-line app, both
-showed the same safety code, and a folder with nested folders, an empty
-folder, a Unicode file name and a 50 MB file arrived byte for byte identical.
+By hand:
 
-Not checked: two separate machines on a LAN or across the internet (the
-public-relay check runs both engines on one machine), a relay-only data path,
-the installers themselves being installed, and Windows beyond the start-up
-check above. No person has used the Windows build yet.
+* On one Linux machine, the real app paired with the command-line app, both
+  showed the same safety code, and a folder with nested folders, an empty
+  folder, a Unicode file name and a 50 MB file arrived byte for byte
+  identical.
+* The author has used the installed app between separate computers, both on
+  one local network and across the internet (25 November 2026). That is one
+  person's use, not a test plan.
+
+Not checked: a relay-only data path, the full matrix in
+`RELEASE_CHECKLIST.md` (each pair of systems on each kind of network), and
+use by anyone outside the project.
 
 ## Measured
 

@@ -95,7 +95,8 @@ This is a preview. We would rather tell you its limits than have you find them.
 * **The installers are not code-signed.** Windows warns before running them.
 * **Windows and Linux only.** There is no macOS, Android or iOS app yet.
 * **No automatic updates.** Check the Releases page now and then.
-* **It has been tested by machines far more than by people.** See
+* **It has been tested by machines far more than by people.** So far it has
+  been used for real by its author only. See
   [what has been checked](docs/PROGRESS.md#how-it-was-checked).
 
 ## Documentation
